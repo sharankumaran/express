@@ -16,7 +16,9 @@ router.post("/register",async(req,res)=>{
     });
     res.status(201).json({message:"Registered succesfully"});
 });
-
+router.get("/test", (req, res) => {
+  res.send("Auth route working");
+});
 //loginnnnnnnnnnnnnnnnnnn
 router.post("/login", async (req, res) => {
   try {
