@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import '../api/client_api.dart';
@@ -5,7 +7,7 @@ import '../api/invoice_api.dart';
 
 class InvoiceScreen extends StatefulWidget {
   @override
-  _InvoiceScreenState createState() => _InvoiceScreenState();
+  State<InvoiceScreen> createState() => _InvoiceScreenState();
 }
 
 class _InvoiceScreenState extends State<InvoiceScreen> {
@@ -17,7 +19,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   String? pdfPath;
 
   final amountController = TextEditingController();
-
   bool loading = true;
 
   @override
@@ -27,14 +28,26 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Future<void> loadData() async {
-    final clientData = await ClientApi.getClients();
-    final invoiceData = await InvoiceApi.getInvoices();
+    try {
+      final clientData = await ClientApi.getClients();
+      final invoiceData = await InvoiceApi.getInvoices();
 
-    setState(() {
-      clients = clientData;
-      invoices = invoiceData;
-      loading = false;
-    });
+      setState(() {
+        clients = clientData;
+        invoices = invoiceData;
+        loading = false;
+      });
+    } catch (e) {
+      print("Load Error: $e");
+
+      setState(() {
+        loading = false; // 🔥 VERY IMPORTANT
+      });
+
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error loading data")));
+    }
   }
 
   Future<void> pickPDF() async {
@@ -43,7 +56,7 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
       allowedExtensions: ['pdf'],
     );
 
-    if (result != null) {
+    if (result != null && result.files.single.path != null) {
       setState(() {
         pdfPath = result.files.single.path!;
       });
@@ -51,34 +64,46 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
   }
 
   Future<void> createInvoice() async {
-    if (selectedClientId == null || pdfPath == null) {
+    if (amountController.text.isEmpty ||
+        selectedClientId == null ||
+        pdfPath == null) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Fill all fields")));
       return;
     }
 
-    await InvoiceApi.createInvoice(
-      amount: amountController.text,
-      status: status,
-      clientId: selectedClientId!,
-      pdfPath: pdfPath!,
-    );
+    try {
+      await InvoiceApi.createInvoice(
+        amount: amountController.text,
+        status: status,
+        clientId: selectedClientId!,
+        pdfPath: pdfPath!,
+      );
 
-    amountController.clear();
-    pdfPath = null;
+      amountController.clear();
+      selectedClientId = null;
+      pdfPath = null;
 
-    await loadData();
+      await loadData();
 
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text("Invoice Created")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Invoice Created")));
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     if (loading) {
-      return Scaffold(body: Center(child: CircularProgressIndicator()));
+      return Scaffold(
+        appBar: AppBar(title: Text("Invoices")),
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
     return Scaffold(
@@ -87,7 +112,6 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
         padding: EdgeInsets.all(16),
         child: Column(
           children: [
-            /// -------- CREATE INVOICE FORM --------
             Text(
               "Create Invoice",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -150,13 +174,10 @@ class _InvoiceScreenState extends State<InvoiceScreen> {
 
             Divider(height: 40),
 
-            /// -------- INVOICE LIST --------
             Text(
               "Invoice List",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-
-            SizedBox(height: 10),
 
             ListView.builder(
               shrinkWrap: true,

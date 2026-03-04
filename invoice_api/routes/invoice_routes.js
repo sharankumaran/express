@@ -18,17 +18,25 @@ router.post("/", auth, upload.single("pdf"), async (req, res) => {
 
 // Get with filtering + pagination
 router.get("/", auth, async (req, res) => {
-  const { status, page = 1, limit = 5 } = req.query;
+  try {
+    const status = req.query.status;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 5;
 
-  let filter = {};
-  if (status) filter.status = status;
+    let filter = {};
+    if (status) filter.status = status;
 
-  const invoices = await Invoice.find(filter)
-    .skip((page - 1) * limit)
-    .limit(Number(limit))
-    .populate("client");
+    const invoices = await Invoice.find(filter)
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .populate("client");
 
-  res.json(invoices);
+    res.json(invoices);
+
+  } catch (err) {
+    console.log("INVOICE GET ERROR:", err);
+    res.status(500).json({ message: err.message });
+  }
 });
 
 module.exports = router;
