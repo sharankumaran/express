@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const Invoice = require("../models/invoice");
 const auth = require("../middleware/auth_middleware");
-
+const Client = require("../models/client");
 const router = express.Router();
 const upload = multer({ dest: "uploads" });
 
